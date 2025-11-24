@@ -24,7 +24,6 @@ DECAY_SEARCH_URL = "decaysearchdirect.jsp"
 ALPHA_DECAY_HREF_PATTERN = re.compile("getdecaydataset.jsp" + ".*a\\sdecay")
 
 DECAY_DATA_DIR = "./Data/Decays/ensdf"
-ALPHA_LIST_DIR = "./AlphaLists"
 
 class Client:
     def __init__(self, element, isotope):
@@ -32,23 +31,6 @@ class Client:
         self.isotope = str(isotope)
         self.nndc_url = URL_BASE + DECAY_SEARCH_URL + "?unc=NDS&nuc=" + self.isotope + element.upper()
         self.http = self.setup_http()
-
-    def write_alpha_files(self):
-        alpha_list_file = self.alpha_list_file_path()
-
-        if os.path.exists(alpha_list_file):
-            print(f"Alpha list file already exists at {self.alpha_list_file_path()}")
-        else:
-            decay_file_text = self.read_or_fetch_decay_file()
-            energyMaps = Parser.parse(decay_file_text)
-            file = open(alpha_list_file, "w")
-
-            for energy, probability in energyMaps["alphas"].items():
-                file.write(f"{str(energy/1000)}\t{probability}\n")
-
-            file.close()
-
-        return True
 
     def read_or_fetch_decay_file(self):
         if os.path.exists(self.decay_file_path()):
@@ -95,9 +77,6 @@ class Client:
 
     def decay_file_path(self):
         return f"{DECAY_DATA_DIR}/{self.element.symbol}{self.isotope}.dat"
-
-    def alpha_list_file_path(self):
-        return f"{ALPHA_LIST_DIR}/{self.element.symbol}{self.isotope}Alphas.dat"
 
     def setup_http(self):
         session = Session()

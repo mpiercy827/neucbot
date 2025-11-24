@@ -38,7 +38,7 @@ def ensdf_fetch_empty_decay(url, headers):
 class TestClient(TestCase):
 
     @patch.object(Session, "get")
-    def test_write_alpha_files_success(self, mocked_get, mocked_os_path_exists):
+    def test_read_or_fetch_decay_file_success(self, mocked_get, mocked_os_path_exists):
         # Assume no decay or alpha files exist
         mocked_os_path_exists.return_value = False
 
@@ -46,7 +46,7 @@ class TestClient(TestCase):
         mocked_get.side_effect = ensdf_fetch_success
 
         client = Client("Bi", 212)
-        client.write_alpha_files()
+        client.read_or_fetch_decay_file()
 
         mocked_get.assert_has_calls([
             call(client.nndc_url, headers=REQUEST_HEADERS),
@@ -62,11 +62,10 @@ class TestClient(TestCase):
         mocked_os_path_exists.side_effect = decay_file_exists
 
         client = Client("Bi", 212)
-        client.write_alpha_files()
+        client.read_or_fetch_decay_file()
 
         mocked_client_fetch.assert_not_called()
         mocked_os_path_exists.assert_has_calls([
-            call("./AlphaLists/Bi212Alphas.dat"),
             call("./Data/Decays/ensdf/Bi212.dat"),
         ])
 
@@ -82,7 +81,7 @@ class TestClient(TestCase):
         client = Client("Bi", 212)
 
         with self.assertRaisesRegex(RuntimeError, r"No Alpha Decay links found"):
-            client.write_alpha_files()
+            client.read_or_fetch_decay_file()
 
 
     @patch.object(Session, "get")
@@ -96,7 +95,7 @@ class TestClient(TestCase):
         client = Client("Bi", 212)
 
         with self.assertRaisesRegex(RuntimeError, r"No page content found"):
-            client.write_alpha_files()
+            client.read_or_fetch_decay_file()
 
 
     @patch.object(Parser, "is_alpha_decay")
@@ -109,7 +108,7 @@ class TestClient(TestCase):
         client = Client("Bi", 212)
 
         with self.assertRaisesRegex(RuntimeError, r"No valid ground state alpha decays"):
-            client.write_alpha_files()
+            client.read_or_fetch_decay_file()
 
 
     @patch.object(Parser, "is_ground_state_decay")
@@ -124,7 +123,7 @@ class TestClient(TestCase):
         client = Client("Bi", 212)
 
         with self.assertRaisesRegex(RuntimeError, r"No valid ground state alpha decays"):
-            client.write_alpha_files()
+            client.read_or_fetch_decay_file()
 
 
     @patch.object(Session, "get")
@@ -139,11 +138,11 @@ class TestClient(TestCase):
         client = Client("Bi", 212)
 
         try:
-            client.write_alpha_files()
+            client.read_or_fetch_decay_file()
         except HTTPError:
             pass
 
-        client.write_alpha_files()
+        client.read_or_fetch_decay_file()
 
         self.assertEqual(mocked_get.call_count, 3)
 
