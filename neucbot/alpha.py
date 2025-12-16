@@ -3,6 +3,7 @@ from neucbot import ensdf
 
 ALPHA_LIST_DIR = "./AlphaLists"
 
+
 class AlphaList:
     def __init__(self, element, isotope):
         self.element = element

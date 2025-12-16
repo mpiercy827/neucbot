@@ -2,6 +2,7 @@ import pytest
 
 from neucbot import elements
 
+
 class TestElements:
     def test_isotopes(self):
         hydrogen = elements.Element("H")

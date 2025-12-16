@@ -7,20 +7,24 @@ from requests import Session
 from requests.exceptions import HTTPError
 from neucbot.ensdf import Client, Parser, REQUEST_HEADERS, URL_BASE
 
+
 class MockResponse:
     def __init__(self, content):
         self.content = content
         self.text = content
 
-class MockSearchResponse():
+
+class MockSearchResponse:
     def __init__(self):
         with open("./tests/test_ensdf/bi212_search_results.html", "r") as file:
             self.content = file.read()
 
-class MockDecayResponse():
+
+class MockDecayResponse:
     def __init__(self):
         with open("./tests/test_ensdf/bi212.html", "r") as file:
             self.text = file.read()
+
 
 def ensdf_fetch_success(url, headers):
     if re.search(r"decaysearchdirect", url):
@@ -28,11 +32,13 @@ def ensdf_fetch_success(url, headers):
     elif re.search(r"getdecaydataset", url):
         return MockDecayResponse()
 
+
 def ensdf_fetch_empty_decay(url, headers):
     if re.search(r"decaysearchdirect", url):
         return MockSearchResponse()
     elif re.search(r"getdecaydataset", url):
         return MockResponse("<html><body><pre></pre></body></html>")
+
 
 @patch("os.path.exists")
 class TestClient(TestCase):
@@ -48,14 +54,21 @@ class TestClient(TestCase):
         client = Client("Bi", 212)
         client.read_or_fetch_decay_file()
 
-        mocked_get.assert_has_calls([
-            call(client.nndc_url, headers=REQUEST_HEADERS),
-            call(URL_BASE + "getdecaydataset.jsp?nucleus=208TL&dsid=212bi a decay (25.0 m)", headers=REQUEST_HEADERS),
-        ])
-
+        mocked_get.assert_has_calls(
+            [
+                call(client.nndc_url, headers=REQUEST_HEADERS),
+                call(
+                    URL_BASE
+                    + "getdecaydataset.jsp?nucleus=208TL&dsid=212bi a decay (25.0 m)",
+                    headers=REQUEST_HEADERS,
+                ),
+            ]
+        )
 
     @patch.object(Client, "fetch_and_write_decay_file")
-    def test_reads_existing_decay_file(self, mocked_client_fetch, mocked_os_path_exists):
+    def test_reads_existing_decay_file(
+        self, mocked_client_fetch, mocked_os_path_exists
+    ):
         def decay_file_exists(path):
             return re.search(r"Data\/Decays", path)
 
@@ -65,24 +78,28 @@ class TestClient(TestCase):
         client.read_or_fetch_decay_file()
 
         mocked_client_fetch.assert_not_called()
-        mocked_os_path_exists.assert_has_calls([
-            call("./Data/Decays/ensdf/Bi212.dat"),
-        ])
-
+        mocked_os_path_exists.assert_has_calls(
+            [
+                call("./Data/Decays/ensdf/Bi212.dat"),
+            ]
+        )
 
     @patch.object(Session, "get")
-    def test_raises_runtime_error_for_no_alpha_decay_links(self, mocked_get, mocked_os_path_exists):
+    def test_raises_runtime_error_for_no_alpha_decay_links(
+        self, mocked_get, mocked_os_path_exists
+    ):
         # Assume no decay or alpha files exist
         mocked_os_path_exists.return_value = False
 
         # Mimic search for invalid element
-        mocked_get.return_value = MockResponse("<html><body>No datasets were found within the specified search parameters</body></html>")
+        mocked_get.return_value = MockResponse(
+            "<html><body>No datasets were found within the specified search parameters</body></html>"
+        )
 
         client = Client("Bi", 212)
 
         with self.assertRaisesRegex(RuntimeError, r"No Alpha Decay links found"):
             client.read_or_fetch_decay_file()
-
 
     @patch.object(Session, "get")
     def test_empty_decay_page_content(self, mocked_get, mocked_os_path_exists):
@@ -97,24 +114,28 @@ class TestClient(TestCase):
         with self.assertRaisesRegex(RuntimeError, r"No page content found"):
             client.read_or_fetch_decay_file()
 
-
     @patch.object(Parser, "is_alpha_decay")
     @patch.object(Session, "get")
-    def test_not_alpha_decay_file(self, mocked_get, mocked_alpha_decay, mocked_os_path_exists):
+    def test_not_alpha_decay_file(
+        self, mocked_get, mocked_alpha_decay, mocked_os_path_exists
+    ):
         mocked_os_path_exists.return_value = False
         mocked_get.side_effect = ensdf_fetch_success
         mocked_alpha_decay.return_value = False
 
         client = Client("Bi", 212)
 
-        with self.assertRaisesRegex(RuntimeError, r"No valid ground state alpha decays"):
+        with self.assertRaisesRegex(
+            RuntimeError, r"No valid ground state alpha decays"
+        ):
             client.read_or_fetch_decay_file()
-
 
     @patch.object(Parser, "is_ground_state_decay")
     @patch.object(Parser, "is_alpha_decay")
     @patch.object(Session, "get")
-    def test_not_ground_state_decay_file(self, mocked_get, mocked_alpha_decay, mocked_ground_state, mocked_os_path_exists):
+    def test_not_ground_state_decay_file(
+        self, mocked_get, mocked_alpha_decay, mocked_ground_state, mocked_os_path_exists
+    ):
         mocked_os_path_exists.return_value = False
         mocked_get.side_effect = ensdf_fetch_success
         mocked_alpha_decay.return_value = True
@@ -122,9 +143,10 @@ class TestClient(TestCase):
 
         client = Client("Bi", 212)
 
-        with self.assertRaisesRegex(RuntimeError, r"No valid ground state alpha decays"):
+        with self.assertRaisesRegex(
+            RuntimeError, r"No valid ground state alpha decays"
+        ):
             client.read_or_fetch_decay_file()
-
 
     @patch.object(Session, "get")
     def test_retry_on_http_errors(self, mocked_get, mocked_os_path_exists):
@@ -153,25 +175,29 @@ class TestParser(TestCase):
             text = file.read()
 
         expected_alphas = {
-                6089.88: 27.12,
-                6050.78: 69.91,
-                5768: 1.70,
-                5626: 0.157,
-                5607: 1.13,
-                5481: 0.013,
-                5345: 0.0010,
-                5302: 0.00011,
-                }
+            6089.88: 27.12,
+            6050.78: 69.91,
+            5768: 1.70,
+            5626: 0.157,
+            5607: 1.13,
+            5481: 0.013,
+            5345: 0.0010,
+            5302: 0.00011,
+        }
         expected_gammas = {
-  	            39.857: 2.96,
-  	            288.2: 0.938,
-  	            328.03: 0.349,
-  	            433.7: 0.047,
-  	            452.98: 1.01,
-  	            473.0: 0.14,
-                }
+            39.857: 2.96,
+            288.2: 0.938,
+            328.03: 0.349,
+            433.7: 0.047,
+            452.98: 1.01,
+            473.0: 0.14,
+        }
 
-        expected = { "alphas": expected_alphas, "gammas": expected_gammas, "intensity": 1.0}
+        expected = {
+            "alphas": expected_alphas,
+            "gammas": expected_gammas,
+            "intensity": 1.0,
+        }
         assert Parser.parse(text) == expected
 
     def test_questionable_record(self):

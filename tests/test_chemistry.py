@@ -2,6 +2,7 @@ import pytest
 
 from neucbot import chemistry
 
+
 class TestChemistry:
     def test_getZ(self):
         assert chemistry.getZ("H") == 1
