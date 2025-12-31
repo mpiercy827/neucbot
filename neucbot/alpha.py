@@ -7,10 +7,15 @@ ALPHA_LIST_DIR = "./AlphaLists"
 def _alphas_from_file_path(file_path):
     file = open(file_path)
 
+    # Parse alphalist files:
+    # 1. Only parse lines that have 2+ tab-separated tokens
+    # 2. Ignore any lines starting with "#"
+    # 3. Return list of lists (where each sublist is a list of floats)
     alphas = [
-        line.split()
-        for line in file.readlines()
-        if line[0] != "#" and len(line.split()) >= 2
+        [float(token) for token in line.split()]  # Parse each token as float
+        for line in file.readlines()  # for each line in file
+        if line[0] != "#"
+        and len(line.split()) >= 2  # except for lines matching these conditions
     ]
 
     file.close()
