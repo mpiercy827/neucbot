@@ -4,11 +4,42 @@ from neucbot import ensdf
 ALPHA_LIST_DIR = "./AlphaLists"
 
 
+def _alphas_from_file_path(file_path):
+    file = open(file_path)
+
+    alphas = [
+        line.split()
+        for line in file.readlines()
+        if line[0] != "#" and len(line.split()) >= 2
+    ]
+
+    file.close()
+
+    return alphas
+
+
 class AlphaList:
     def __init__(self, element, isotope):
         self.element = element
         self.isotope = isotope
         self.file_path = f"{ALPHA_LIST_DIR}/{self.element}{self.isotope}Alphas.dat"
+        self.fetch_attempts = 3
+
+    @classmethod
+    def from_filepath(cls, file_path):
+        return _alphas_from_file_path(file_path)
+
+    def load_or_fetch(self):
+        while not os.path.isfile(self.file_path):
+            if self.fetch_attempts < 0:
+                raise RuntimeError(f"Unable to write alpha file to {self.file_path}")
+            self.write()
+            self.fetch_attempts -= 1
+
+        return self.load()
+
+    def load(self):
+        return _alphas_from_file_path(self.file_path)
 
     def write(self):
         if os.path.exists(self.file_path):

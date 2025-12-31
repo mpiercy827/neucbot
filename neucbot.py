@@ -10,6 +10,7 @@ import math
 from neucbot import ensdf
 
 from neucbot import elements
+from neucbot import alpha
 
 class constants:
     N_A = 6.0221409e+23
@@ -46,46 +47,6 @@ def parseIsotope(iso):
             A = A*10 + int(i)
     return [ele,A]
 
-def generateAlphaFileName(ele,A):
-    outdir = './AlphaLists/'
-    fName = outdir + ele.capitalize() + str(A) + 'Alphas.dat'
-    return fName
-
-def generateAlphaList(ele, A):
-    print('generateAlphaList(',ele,A,')',file=constants.ofile)
-    ensdf.main(['parseENSDF',ele,A])
-
-def loadAlphaList(fname):
-    f = open(fname)
-    tokens = [line.split() for line in f.readlines()]
-    alpha_list = []
-    for words in tokens:
-        if words[0][0] == '#' or len(words) < 2:
-            continue
-
-        alpha = []
-        for word in words:
-            alpha.append(float(word))
-        alpha_list.append(alpha)
-    f.close()
-    return alpha_list
-
-def getAlphaList(ele,A):
-    fname = generateAlphaFileName(ele,A)
-    return loadAlphaList(fname)
-
-def getAlphaListIfExists(ele,A):
-    fName = generateAlphaFileName(ele,A)
-    tries = 3
-    while not os.path.isfile(fName):
-        if tries < 0:
-            print('Cannot generate alpha list for ele = ', ele,  ' and A = ', A,file = constants.ofile)
-            return 0
-        print('generating alpha file ', fName, file = constants.ofile)
-        generateAlphaList(ele,A)
-        tries -= 1
-    return getAlphaList(ele,A)
-
 def loadChainAlphaList(fname):
     f = open(fname)
     tokens = [line.split() for line in f.readlines()]
@@ -99,7 +60,7 @@ def loadChainAlphaList(fname):
         [ele,A] = parseIsotope(iso)
 
         # Now get the isotope's alpha list and add it to the chain's list
-        aList_forIso = getAlphaListIfExists(ele,A)
+        aList_forIso = alpha.AlphaList(ele, A).load_or_fetch()
         if constants.print_alphas:
             print(iso, file = constants.ofile)
             print('\t', aList_forIso, file = constants.ofile)
@@ -472,7 +433,7 @@ def main():
         if arg == '-l':
             alphalist_file = sys.argv[sys.argv.index(arg)+1]
             print('load alpha list', alphalist_file, file = sys.stdout)
-            alpha_list = loadAlphaList(alphalist_file)
+            alpha_list = alpha.AlphaList.from_filepath(alphalist_file)
         if arg == '-c':
             chain_file = sys.argv[sys.argv.index(arg)+1]
             print('load alpha chain', chain_file, file = sys.stdout)
@@ -545,4 +506,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
