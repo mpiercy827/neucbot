@@ -7,13 +7,13 @@ import re
 import subprocess
 import shutil
 import math
-from neucbot import ensdf
 
-from neucbot import elements
 from neucbot import alpha
+from neucbot import ensdf
+from neucbot import elements
+from neucbot import material
 
 class constants:
-    N_A = 6.0221409e+23
     MeV_to_keV= 1.e3
     mb_to_cm2 = 1.e-27
     year_to_s = 31536000
@@ -27,12 +27,6 @@ class constants:
     download_version = 2
     force_recalculation = False
     ofile = sys.stdout
-
-class material:
-    def __init__(self,e,a,f):
-        self.ele = str(e)
-        self.A = float(a)
-        self.frac = float(f)
 
 def isoDir(ele,A):
     return './Data/Isotopes/'+ele.capitalize()+'/'+ele.capitalize()+str(int(A))+'/'
@@ -67,100 +61,6 @@ def loadChainAlphaList(fname):
         for [ene,intensity] in aList_forIso:
             alpha_list.append([ene, intensity*br/100])
     return alpha_list
-
-def readTargetMaterial(fname):
-    f = open(fname)
-    mat_comp = []
-    tokens = [line.split() for line in f.readlines()]
-    for line in tokens:
-        if len(list(line)) < 3:
-            continue
-        if line[0][0] == '#':
-            continue
-        element = elements.Element(line[0])
-        A = int(line[1])
-        frac = float(line[2])
-
-        if A == 0:
-            natIso_list = element.isotopes()
-            print(natIso_list)
-            for A_i in natIso_list:
-                abund = element.abundance(A_i)
-                print(A_i)
-                print(abund)
-                mater = material(element.symbol,A_i,frac*abund/100.)
-                mat_comp.append(mater)
-        else:
-            mater = material(element.symbol,A,frac)
-            mat_comp.append(mater)
-
-    # Normalize
-    norm = 0
-    for mat in mat_comp:
-        norm += mat.frac
-    for mat in mat_comp:
-        mat.frac /= norm
-
-    return mat_comp
-
-def calcStoppingPower(e_alpha_MeV,mat_comp):
-    # Stopping power as units of keV/(mg/cm^2) or MeV/(g/cm^2)
-    e_alpha = e_alpha_MeV
-    sp_total = 0
-    # First, reduce the material to combine all isotopes with the same Z
-    mat_comp_reduced = {}
-    for mat in mat_comp:
-        if mat.ele in mat_comp_reduced:
-            mat_comp_reduced[mat.ele] += mat.frac
-        else:
-            mat_comp_reduced[mat.ele] = mat.frac
-
-    # Then, for each element, get the stopping power at this alpha energy
-    for mat in mat_comp_reduced:
-        spDir = './Data/StoppingPowers/'
-        spFile = spDir + mat.lower() + '.dat'
-        spf = open(spFile)
-
-        tokens = [line.split() for line in spf.readlines()]
-        first = True
-        sp_found = False
-        e_curr = 0
-        e_last = 0
-        sp_curr = 0
-        sp_last = 0
-        sp_alpha = 0
-        for line in tokens:
-            if line[0][0] == '#':
-                continue
-            e_curr = float(line[0])
-            if str(line[1]) == 'keV':
-                e_curr /= 1000
-            elif str(line[1]) == 'MeV':
-                e_curr *= 1
-            sp_curr = float(line[3])+float(line[2])
-
-            # Alpha energy is below the list. Use the lowest energy in the list
-            if e_curr > e_alpha and first:
-                first = False
-                sp_found = True
-                sp_alpha = sp_curr
-                break
-            # If this entry is above the alpha energy, the alpha is between this
-            # entry and the previous one
-            if e_curr > e_alpha:
-                first = False
-                sp_alpha = (sp_curr-sp_last)*(e_alpha-e_last)/(e_curr-e_last) + sp_last
-                sp_found = True
-                break
-            # Otherwise, keep looking for the entry
-            first = False
-            sp_last = sp_curr
-            e_last = e_curr
-        # if the alpha energy is too high for the list, use the highest energy on the list
-        if not sp_found:
-            sp_alpha = sp_last
-        sp_total += sp_alpha * mat_comp_reduced[mat]/100
-    return sp_total
 
 def runTALYS(e_a, ele, A):
     iso = str(ele)+str(int(A))
@@ -207,14 +107,6 @@ def runTALYS(e_a, ele, A):
         blank_f = open(fname,'w')
         blank_f.write("EMPTY")
         blank_f.close()
-
-
-def getMatTerm(mat,mat_comp):
-    # mat_comp structure: [ele,A,frac]
-    A = mat.A
-    conc = mat.frac/100.
-    mat_term = (constants.N_A * conc)/A
-    return mat_term
 
 def getIsotopeDifferentialNSpec(e_a, ele, A):
     target = ele+str(int(A))
@@ -382,20 +274,20 @@ def run_alpha(alpha_list, mat_comp, e_alpha_step):
 
         stopping_power = 0
         if stopping_power == 0:
-            stopping_power = calcStoppingPower(e_a, mat_comp)
-        for mat in mat_comp:
-            mat_term = getMatTerm(mat,mat_comp)
+            stopping_power = mat_comp.stopping_power(e_a)
+        for mat in mat_comp.materials:
+            mat_term = mat.material_term()
             # Get alpha n spectrum for this alpha and this target
-            spec_raw = getIsotopeDifferentialNSpec(e_a, mat.ele, mat.A)
+            spec_raw = getIsotopeDifferentialNSpec(e_a, mat.element.symbol,  mat.mass_number)
             spec = rebin(spec_raw,constants.delta_bin,constants.min_bin,constants.max_bin)
             # Add this spectrum to the total spectrum
             delta_ea = e_alpha_step
             if e_a - e_alpha_step < 0:
                 delta_ea = e_a
             prefactors = (intensity/100.)*mat_term*delta_ea/stopping_power
-            xsect = prefactors * readTotalNXsect(e_a,mat.ele,mat.A)
+            xsect = prefactors * readTotalNXsect(e_a,mat.element.symbol, mat.mass_number)
             total_xsect += xsect
-            matname = str(mat.ele)+str(mat.A)
+            matname = str(mat.element.symbol)+str(mat.mass_number)
             if matname in xsects:
                 xsects[matname] += xsect
             else:
@@ -441,7 +333,7 @@ def main():
         if arg == '-m':
             mat_file = sys.argv[sys.argv.index(arg)+1]
             print('load target material', mat_file, file = sys.stdout)
-            mat_comp = readTargetMaterial(mat_file)
+            mat_comp = material.Composition.from_file(mat_file)
         if arg == '-s':
             alpha_step_size = float(sys.argv[sys.argv.index(arg)+1])
             print('step size', alpha_step_size, file = sys.stdout)
@@ -473,9 +365,9 @@ def main():
             constants.ofile = open(ofile,'w')
             #sys.stdout = open(ofile,'w')
 
-    if len(alpha_list) == 0 or len(mat_comp) == 0:
+    if len(alpha_list) == 0 or mat_comp.empty():
         if len(alpha_list)==0: print('No alpha list or chain specified', file = sys.stdout)
-        if len(mat_comp)==0: print('No target material specified', file = sys.stdout)
+        if mat_comp.empty(): print('No target material specified', file = sys.stdout)
         print('', file = sys.stdout)
         help_message()
         return 0
@@ -488,8 +380,8 @@ def main():
             print(alph[0],'&', alph[1],'\\\\', file = sys.stdout)
 
     if constants.download_data:
-        for mat in mat_comp:
-            ele = mat.ele
+        for mat in mat_comp.materials:
+            ele = mat.element.symbol
             if not os.path.exists('./Data/Isotopes/'+ele.capitalize()):
                 if constants.download_version == 2:
                     print('\tDownloading (datset V2) data for',ele, file = sys.stdout)
