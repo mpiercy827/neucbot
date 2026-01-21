@@ -25,3 +25,6 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -vv
+
+      - name: Run linter
+        run: python -m black neucbot/ tests/ --check

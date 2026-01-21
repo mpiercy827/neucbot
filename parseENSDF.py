@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import sys
-from neucbot import ensdf
+from neucbot import alpha
 
 def main(argv):
     if(len(argv) != 3):
@@ -10,7 +10,7 @@ def main(argv):
     ele = argv[1]
     A = int(argv[2])
 
-    ensdf.Client(ele, A).write_alpha_files()
+    alpha.AlphaList(ele, A).write()
 
 if __name__ == "__main__":
     main(sys.argv)

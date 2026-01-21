@@ -30,6 +30,7 @@ Reads in the map from elements.json, which is structured in the following format
 with open("./neucbot/elements.json", "r") as file:
     isotopesMap = json.load(file)
 
+
 class Element:
     def __init__(self, element):
         self.symbol = element.capitalize()

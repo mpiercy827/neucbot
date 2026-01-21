@@ -5,6 +5,7 @@ can be found at:
 
 https://www.nndc.bnl.gov/ensdf/ensdf-manual.pdf
 """
+
 import os
 import re
 from requests import Session
@@ -24,31 +25,20 @@ DECAY_SEARCH_URL = "decaysearchdirect.jsp"
 ALPHA_DECAY_HREF_PATTERN = re.compile("getdecaydataset.jsp" + ".*a\\sdecay")
 
 DECAY_DATA_DIR = "./Data/Decays/ensdf"
-ALPHA_LIST_DIR = "./AlphaLists"
+
 
 class Client:
     def __init__(self, element, isotope):
         self.element = elements.Element(element)
         self.isotope = str(isotope)
-        self.nndc_url = URL_BASE + DECAY_SEARCH_URL + "?unc=NDS&nuc=" + self.isotope + element.upper()
+        self.nndc_url = (
+            URL_BASE
+            + DECAY_SEARCH_URL
+            + "?unc=NDS&nuc="
+            + self.isotope
+            + element.upper()
+        )
         self.http = self.setup_http()
-
-    def write_alpha_files(self):
-        alpha_list_file = self.alpha_list_file_path()
-
-        if os.path.exists(alpha_list_file):
-            print(f"Alpha list file already exists at {self.alpha_list_file_path()}")
-        else:
-            decay_file_text = self.read_or_fetch_decay_file()
-            energyMaps = Parser.parse(decay_file_text)
-            file = open(alpha_list_file, "w")
-
-            for energy, probability in energyMaps["alphas"].items():
-                file.write(f"{str(energy/1000)}\t{probability}\n")
-
-            file.close()
-
-        return True
 
     def read_or_fetch_decay_file(self):
         if os.path.exists(self.decay_file_path()):
@@ -62,20 +52,26 @@ class Client:
 
     def fetch_and_write_decay_file(self):
         search_results = self.http.get(self.nndc_url, headers=REQUEST_HEADERS).content
-        links = BeautifulSoup(search_results, "html.parser").find_all(href=ALPHA_DECAY_HREF_PATTERN)
+        links = BeautifulSoup(search_results, "html.parser").find_all(
+            href=ALPHA_DECAY_HREF_PATTERN
+        )
 
         if len(links) == 0:
             raise RuntimeError(f"No Alpha Decay links found on {self.nndc_url}")
         else:
             for link in links:
                 path = link.attrs.get("href")
-                decay_page = self.http.get(URL_BASE + path, headers=REQUEST_HEADERS).text
+                decay_page = self.http.get(
+                    URL_BASE + path, headers=REQUEST_HEADERS
+                ).text
                 decay_file = BeautifulSoup(decay_page, "html.parser").find("pre")
 
                 if decay_file and len(decay_file.contents) > 0:
                     decay_file = decay_file.contents[0].strip()
                 else:
-                    raise RuntimeError(f"No page content found on {self.nndc_url}{path}")
+                    raise RuntimeError(
+                        f"No page content found on {self.nndc_url}{path}"
+                    )
 
                 if not Parser.is_alpha_decay(decay_file):
                     print(f"No alpha decay found at {self.nndc_url}/{path}")
@@ -84,7 +80,9 @@ class Client:
                 else:
                     return self.write_decay_file(decay_file)
 
-        raise RuntimeError(f"No valid ground state alpha decays found at {self.nndc_url}")
+        raise RuntimeError(
+            f"No valid ground state alpha decays found at {self.nndc_url}"
+        )
 
     def write_decay_file(self, decay_file_text):
         file = open(self.decay_file_path(), "w")
@@ -96,9 +94,6 @@ class Client:
     def decay_file_path(self):
         return f"{DECAY_DATA_DIR}/{self.element.symbol}{self.isotope}.dat"
 
-    def alpha_list_file_path(self):
-        return f"{ALPHA_LIST_DIR}/{self.element.symbol}{self.isotope}Alphas.dat"
-
     def setup_http(self):
         session = Session()
         session.mount("https://", HTTPAdapter(max_retries=Retry(total=3)))
@@ -109,6 +104,8 @@ class Client:
 """
 The Parser class parses records from the NNDC ENSDF Database
 """
+
+
 class Parser:
 
     # Pattern of Parent Record for Ground State Decay is:
@@ -124,16 +121,20 @@ class Parser:
     # Pattern of Alpha energies is:
     # "(5-character nuclear ID)  A (Energy [up to 10 digits]) (Uncertainty Energy) (Intensity) (Uncertainty intensity)"
     # ENSDF Manual, page 25
-    ALPHA_RECORD = re.compile(r"^[A-Z0-9]{5}\s{2}A\s(?P<energy>[0-9\s\.]{10})[0-9\.\s]{2}(?P<intensity>[0-9\.\-E\s]{8})")
+    ALPHA_RECORD = re.compile(
+        r"^[A-Z0-9]{5}\s{2}A\s(?P<energy>[0-9\s\.]{10})[0-9\.\s]{2}(?P<intensity>[0-9\.\-E\s]{8})"
+    )
 
     # Pattern of Gamma energies is:
     # "(5-character nuclear ID)  G (Energy [up to 10 digits]) (Uncertainty Energy) (Intensity) (Uncertainty intensity)"
     # ENSDF Manual, page 28
-    GAMMA_RECORD = re.compile(r"^[A-Z0-9]{5}\s{2}G\s(?P<energy>[0-9\s\.]{10})[0-9\.\s]{2}(?P<intensity>[0-9\.\-E\s]{8})")
+    GAMMA_RECORD = re.compile(
+        r"^[A-Z0-9]{5}\s{2}G\s(?P<energy>[0-9\s\.]{10})[0-9\.\s]{2}(?P<intensity>[0-9\.\-E\s]{8})"
+    )
 
     @classmethod
     def parse(cls, file_text):
-        contents = { "alphas": {}, "gammas": {}, "intensity": 0 }
+        contents = {"alphas": {}, "gammas": {}, "intensity": 0}
         for line in file_text.splitlines():
             if cls.questionable_record(line):
                 continue
@@ -173,5 +174,6 @@ class Parser:
 
     @classmethod
     def is_ground_state_decay(cls, page_text):
-        return any(cls.GROUND_STATE_DECAY_RECORD.match(line) for line in page_text.splitlines())
-
+        return any(
+            cls.GROUND_STATE_DECAY_RECORD.match(line) for line in page_text.splitlines()
+        )
