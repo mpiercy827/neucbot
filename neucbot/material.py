@@ -37,20 +37,27 @@ class StoppingPowerList:
             self.stopping_powers[energy] = stopping_power
 
     # Use binary search to find energy in log(N) time
-    def find_energy(self, energy):
+    def for_alpha(self, alpha_energy):
         energy_intervals = list(self.stopping_powers.keys())
         min_energy = energy_intervals[0]
         max_energy = energy_intervals[-1]
 
-        if energy < min_energy:
+        if alpha_energy < min_energy:
             return self.stopping_powers[min_energy]
-        elif energy > max_energy:
+        elif alpha_energy > max_energy:
             return self.stopping_powers[max_energy]
 
-        interval_index = bisect(energy_intervals, energy) - 1
-        interval_start = energy_intervals[interval_index]
+        range_end = bisect(energy_intervals, alpha_energy)
+        range_start = range_end - 1
 
-        return self.stopping_powers[interval_start]
+        energy_start = energy_intervals[range_start]
+        energy_end = energy_intervals[range_end]
+        energy_diff = (alpha_energy - energy_start) / (energy_end - energy_start)
+
+        stop_power_start = self.stopping_powers[energy_start]
+        stop_power_end = self.stopping_powers[energy_end]
+
+        return (stop_power_end - stop_power_start) * energy_diff + stop_power_start
 
 
 class Composition:
@@ -130,7 +137,7 @@ class Composition:
         for element, fraction in self.fractions.items():
             stop_power_list = StoppingPowerList(element)
             stop_power_list.load_file()
-            element_stop_power = stop_power_list.find_energy(e_alpha)
+            element_stop_power = stop_power_list.for_alpha(e_alpha)
 
             total_stopping_power += element_stop_power * fraction
 

@@ -70,16 +70,16 @@ class TestStoppingPowerList:
         assert len(stop_list.stopping_powers.items()) == 79
         assert stop_list.stopping_powers[0.01] == 511.72
 
-    def test_find_energy(self):
+    def test_for_alpha(self):
         stop_list = material.StoppingPowerList("C")
         stop_list.load_file()
 
         # Energy less than lowest energy in the list
-        assert stop_list.find_energy(0.001) == 511.72
+        assert stop_list.for_alpha(0.001) == 511.72
 
         # Energies in between two entries in the list
-        assert stop_list.find_energy(0.525) == 1923.768
-        assert stop_list.find_energy(4.25) == 942.3363
+        assert stop_list.for_alpha(0.525) == 1927.124
+        assert stop_list.for_alpha(4.25) == 906.4551
 
         # Energy higher than the highest in the list
-        assert stop_list.find_energy(11.0) == 486.0835
+        assert stop_list.for_alpha(11.0) == 486.0835
