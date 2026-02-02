@@ -21,7 +21,7 @@ class StoppingPowerList:
         self.stopping_powers = {}
 
     def load_file(self):
-        file_path = f"./Data/StoppingPowers/{self.element_symbol}.dat"
+        file_path = f"./Data/StoppingPowers/{self.element_symbol.lower()}.dat"
         file = open(file_path)
 
         for data in [
