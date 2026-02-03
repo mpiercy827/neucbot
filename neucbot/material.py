@@ -101,12 +101,14 @@ class Composition:
                 )
 
         composition.normalize()
+        composition.populate_stopping_powers()
 
         return composition
 
     def __init__(self):
         self.materials = []
         self.fractions = {}
+        self.stopping_powers = {}
 
     def normalize(self):
         norm = 0
@@ -122,6 +124,15 @@ class Composition:
             symbol = material.element.symbol
             self.fractions[symbol] = self.fractions.get(symbol, 0) + material.fraction
 
+    def populate_stopping_powers(self):
+        # Populates stopping powers from ./Data/StoppingPowers once so that
+        # they don't need to be populated for every energy step
+        for element in self.fractions:
+            stop_power_list = StoppingPowerList(element)
+            stop_power_list.load_file()
+
+            self.stopping_powers[element] = stop_power_list
+
     def empty(self):
         return len(self.materials) == 0
 
@@ -129,15 +140,11 @@ class Composition:
         self.materials.append(material)
 
     # Expects an alpha energy in units of MeV
-    # Need to read/load elements from Data/StoppingPowers/*.dat
-    # Use binary search to speed up search
     def stopping_power(self, e_alpha):
         total_stopping_power = 0
 
         for element, fraction in self.fractions.items():
-            stop_power_list = StoppingPowerList(element)
-            stop_power_list.load_file()
-            element_stop_power = stop_power_list.for_alpha(e_alpha)
+            element_stop_power = self.stopping_powers[element].for_alpha(e_alpha)
 
             total_stopping_power += element_stop_power * fraction
 
