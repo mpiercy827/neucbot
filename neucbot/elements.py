@@ -39,5 +39,6 @@ class Element:
     def isotopes(self):
         return [iso for iso in self.isos.keys()]
 
+    # This should return a value between 0 and 1
     def abundance(self, isotope):
-        return float(self.isos.get(isotope).get("abundance"))
+        return float(self.isos.get(isotope).get("abundance")) / 100.0

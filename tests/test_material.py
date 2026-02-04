@@ -8,21 +8,17 @@ class TestComposition:
         comp = material.Composition.from_file("./tests/test_material/WithIsotopes.dat")
 
         assert len(comp.materials) == 3
-        assert comp.fractions == {
-            "C": 0.5,
-            "O": 0.25,
-            "H": 0.25,
-        }
+        assert comp.fractions.get("C") == pytest.approx(0.5)
+        assert comp.fractions.get("H") == pytest.approx(0.25)
+        assert comp.fractions.get("O") == pytest.approx(0.25)
 
     def test_from_file_no_isotopes_specified(self):
         comp = material.Composition.from_file("./tests/test_material/NoIsotopes.dat")
 
         assert len(comp.materials) == 7
-        assert comp.fractions == {
-            "C": 0.5,
-            "O": 0.25,
-            "H": 0.25,
-        }
+        assert comp.fractions.get("C") == pytest.approx(0.5)
+        assert comp.fractions.get("H") == pytest.approx(0.25)
+        assert comp.fractions.get("O") == pytest.approx(0.25)
 
     def test_normalize(self):
         comp = material.Composition()
@@ -33,9 +29,9 @@ class TestComposition:
 
         comp.normalize()
 
-        assert comp.fractions.get("C") == 0.5
-        assert comp.fractions.get("H") == 0.25
-        assert comp.fractions.get("O") == 0.25
+        assert comp.fractions.get("C") == pytest.approx(0.5)
+        assert comp.fractions.get("H") == pytest.approx(0.25)
+        assert comp.fractions.get("O") == pytest.approx(0.25)
 
     def test_stopping_power_single_element_material(self):
         comp = material.Composition.from_file("./tests/test_material/CarbonOnly.dat")
@@ -50,11 +46,9 @@ class TestComposition:
         comp = material.Composition.from_file("./tests/test_material/WithIsotopes.dat")
 
         assert len(comp.materials) == 3
-        assert comp.fractions == {
-            "C": 0.5,
-            "O": 0.25,
-            "H": 0.25,
-        }
+        assert comp.fractions.get("C") == pytest.approx(0.5)
+        assert comp.fractions.get("H") == pytest.approx(0.25)
+        assert comp.fractions.get("O") == pytest.approx(0.25)
 
         # 50% stopping power of C = 0.5 * 486.0835
         # 25% stopping power of H = 0.25 * 1371.204

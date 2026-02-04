@@ -6,6 +6,7 @@ N_A = 6.0221409e23
 
 
 class Isotope:
+    # self.fraction should be a number between 0 and 1
     def __init__(self, element, mass_number, fraction):
         self.element = element
         self.mass_number = int(mass_number)
