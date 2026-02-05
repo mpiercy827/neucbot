@@ -3,7 +3,7 @@ import re
 
 from unittest import TestCase
 from unittest.mock import call, patch
-from neucbot.alpha import AlphaList
+from neucbot.alpha import AlphaList, ChainAlphaList
 from neucbot.ensdf import Client, Parser
 
 
@@ -86,10 +86,11 @@ class TestAlphaList(TestCase):
         )
 
     def test_from_filepath(self):
-        alphas = AlphaList.from_filepath("AlphaLists/Bi212Alphas.dat")
+        alpha_list = AlphaList.from_filepath("AlphaLists/Bi212Alphas.dat")
+        alpha_list.load_or_fetch()
 
         self.assertEqual(
-            alphas,
+            alpha_list.alphas,
             [
                 [6.08988, 27.12],
                 [6.05078, 69.91],
@@ -127,6 +128,26 @@ class TestAlphaList(TestCase):
             ],
         )
 
+    def test_scale_by(self):
+        alpha_list = AlphaList.from_filepath("AlphaLists/Bi212Alphas.dat")
+        alpha_list.load_or_fetch()
+        alpha_list.scale_by(0.5)
+
+        # Expect alpha intensities to be 50% of regular values
+        self.assertEqual(
+            alpha_list.alphas,
+            [
+                [6.08988, 13.56],
+                [6.05078, 34.955],
+                [5.768, 0.85],
+                [5.626, 0.0785],
+                [5.607, 0.565],
+                [5.481, 0.0065],
+                [5.345, 0.0005],
+                [5.302, 0.000055],
+            ],
+        )
+
     @patch.object(AlphaList, "write")
     @patch("os.path.isfile")
     def test_load_or_fetch_raises_on_failed_write(self, mocked_isfile, mocked_write):
@@ -135,3 +156,65 @@ class TestAlphaList(TestCase):
 
         with self.assertRaisesRegex(RuntimeError, r"Unable to write alpha file"):
             AlphaList("Bi", 212).load_or_fetch()
+
+
+class TestChainAlphaList(TestCase):
+    def test_from_filepath(self):
+        chain_list = ChainAlphaList.from_filepath("Chains/Th232Chain.dat")
+
+        assert chain_list.element == "Th"
+        assert chain_list.isotope == "232"
+
+    def test_from_filepath_error_invalid_filepath(self):
+        with self.assertRaisesRegex(
+            RuntimeError, r"Invalid file path for chain alpha list"
+        ):
+            ChainAlphaList.from_filepath("Chains/Th232Alphas.dat")
+
+    def test_load_or_fetch(self):
+        chain_list = ChainAlphaList.from_filepath("Chains/Th232Chain.dat")
+        chain_list.load_or_fetch()
+
+        assert len(chain_list._alpha_lists) == 7
+        self.assertEqual(
+            chain_list.alphas,
+            [
+                # Th232 Alphas
+                [4.0123, 78.2],
+                [3.9471999999999996, 21.7],
+                [3.8110999999999997, 0.069],
+                # Th228 Alphas
+                [5.42315, 73.4],
+                [5.3403599999999996, 26.0],
+                [5.211, 0.408],
+                [5.173, 0.218],
+                [5.138, 0.036],
+                [4.99, 1e-05],
+                [4.944, 2.4e-05],
+                [4.507, 1.7e-05],
+                [4.43, 4.6e-06],
+                # Ra224 Alphas
+                [5.68537, 94.92],
+                [5.448600000000001, 5.06],
+                [5.161, 0.0071],
+                [5.051, 0.0076],
+                [5.034, 0.003],
+                # Rn220 Alphas
+                [6.28808, 99.886],
+                [5.747, 0.114],
+                # Po216 Alphas
+                [6.7783, 99.9981],
+                [5.985, 0.0019],
+                # Bi212 Alphas (multiplied by branching fraction .3594)
+                [6.08988, 9.746928],
+                [6.05078, 25.125653999999997],
+                [5.768, 0.61098],
+                [5.626, 0.0564258],
+                [5.607, 0.406122],
+                [5.481, 0.0046722],
+                [5.345, 0.0003594],
+                [5.302, 3.9534e-05],
+                # Po212 Alphas (multiplied by branching fraction .6406
+                [8.78486, 64.06],
+            ],
+        )

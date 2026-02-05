@@ -1,38 +1,32 @@
 import os
+import re
 from neucbot import ensdf
 
 ALPHA_LIST_DIR = "./AlphaLists"
-
-
-def _alphas_from_file_path(file_path):
-    file = open(file_path)
-
-    # Parse alphalist files:
-    # 1. Only parse lines that have 2+ tab-separated tokens
-    # 2. Ignore any lines starting with "#"
-    # 3. Return list of lists (where each sublist is a list of floats)
-    alphas = [
-        [float(token) for token in line.split()]  # Parse each token as float
-        for line in file.readlines()  # for each line in file
-        if line[0] != "#"
-        and len(line.split()) >= 2  # except for lines matching these conditions
-    ]
-
-    file.close()
-
-    return alphas
+CHAIN_LIST_DIR = "./Chains"
 
 
 class AlphaList:
+    ALPHA_LIST_FILE_PATTERN = re.compile(
+        r"^AlphaLists\/(?P<element>[A-Za-z]{1,2})(?P<isotope>\d{1,3})Alphas.dat"
+    )
+
     def __init__(self, element, isotope):
         self.element = element
         self.isotope = isotope
         self.file_path = f"{ALPHA_LIST_DIR}/{self.element}{self.isotope}Alphas.dat"
         self.fetch_attempts = 3
+        self.alphas = []
 
     @classmethod
     def from_filepath(cls, file_path):
-        return _alphas_from_file_path(file_path)
+        if alpha_file_match := cls.ALPHA_LIST_FILE_PATTERN.match(file_path):
+            element = alpha_file_match.group("element")
+            isotope = alpha_file_match.group("isotope")
+
+            return cls(element, isotope)
+        else:
+            raise RuntimeError(f"Invalid file path for alphalist {file_path}")
 
     def load_or_fetch(self):
         while not os.path.isfile(self.file_path):
@@ -44,7 +38,27 @@ class AlphaList:
         return self.load()
 
     def load(self):
-        return _alphas_from_file_path(self.file_path)
+        file = open(self.file_path)
+
+        # Parse alphalist files:
+        # 1. Only parse lines that have 2+ tab-separated tokens
+        # 2. Ignore any lines starting with "#"
+        # 3. Return list of lists (where each sublist is a list of floats)
+        self.alphas = [
+            [float(token) for token in line.split()]  # Parse each token as float
+            for line in file.readlines()  # for each line in file
+            if line[0] != "#"
+            and len(line.split()) >= 2  # except for lines matching these conditions
+        ]
+
+        file.close()
+
+        return self.alphas
+
+    def scale_by(self, branch_fraction):
+        self.alphas = [
+            [energy, intensity * branch_fraction] for [energy, intensity] in self.alphas
+        ]
 
     def write(self):
         if os.path.exists(self.file_path):
@@ -61,3 +75,53 @@ class AlphaList:
             file.close()
 
         return True
+
+
+class ChainAlphaList:
+    CHAIN_LIST_FILE_PATTERN = re.compile(
+        r"^Chains\/(?P<element>[A-Za-z]{1,2})(?P<isotope>\d{1,3})Chain.dat"
+    )
+    CHAIN_LIST_LINE_PATTERN = re.compile(
+        r"^(?P<element>[A-Za-z]{1,2})(?P<isotope>\d{1,3})\s+(?P<branch_frac>[\d\.]+)$"
+    )
+
+    def __init__(self, element, isotope):
+        self.element = element
+        self.isotope = isotope
+        self.file_path = f"{CHAIN_LIST_DIR}/{self.element}{self.isotope}Chain.dat"
+        self._alpha_lists = []
+        self.alphas = []
+
+    @classmethod
+    def from_filepath(cls, file_path):
+        if chain_file_match := cls.CHAIN_LIST_FILE_PATTERN.match(file_path):
+            element = chain_file_match.group("element")
+            isotope = chain_file_match.group("isotope")
+
+            return cls(element, isotope)
+        else:
+            raise RuntimeError(f"Invalid file path for chain alpha list {file_path}")
+
+    def load_or_fetch(self):
+        # Read in chain file list line by line, splitting into:
+        #   - element symbol
+        #   - mass_number
+        #   - branching_ratio
+        # load_or_fetch() alpha list for each symbol/mass_number pair
+        # Scale intensity down by branching_ratio / 100
+        file = open(self.file_path)
+
+        for line in file.readlines():
+            if match := self.CHAIN_LIST_LINE_PATTERN.match(line):
+                branch_fraction = float(match.group("branch_frac")) / 100.0
+
+                alpha_list = AlphaList(match.group("element"), match.group("isotope"))
+                alpha_list.load_or_fetch()
+                alpha_list.scale_by(branch_fraction)
+
+                self._alpha_lists.append(alpha_list)
+                self.alphas += alpha_list.alphas
+
+        file.close()
+
+        return self.alphas
