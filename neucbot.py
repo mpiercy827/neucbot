@@ -211,16 +211,17 @@ def readTotalNXsect(e_a,ele,A):
     #print("sigma = " , sigma)
     return sigma
 
+# Finds the max alpha
 def condense_alpha_list(alpha_list,alpha_step_size):
     alpha_ene_cdf = []
     max_alpha = max(alpha_list)
-    e_a_max = int(max_alpha[0]*100 + 0.5)/100.
+    e_a_max = int(max_alpha[0]*100 + 0.5)/100. # Rounding to two decimal places
     alpha_ene_cdf.append([e_a_max,max_alpha[1]])
     e_a = e_a_max
     while e_a > 0:
         cum_int = 0
-        for alpha in alpha_list:
-            this_e_a = int(alpha[0]*100+0.5)/100.
+        for alpha in alpha_list: # Iterates through whole list for each step, could sort instead? (30k operations right now)
+            this_e_a = int(alpha[0]*100+0.5)/100. # Rounding to two decimal places
             if this_e_a >= e_a:
                 cum_int += alpha[1]
         alpha_ene_cdf.append([e_a,cum_int])
