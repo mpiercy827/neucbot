@@ -235,7 +235,7 @@ def run_alpha(alpha_list, mat_comp, e_alpha_step):
     xsects = {}
     total_xsect = 0
     counter = 0
-    alpha_ene_cdf = condense_alpha_list(alpha_list,e_alpha_step)
+    alpha_ene_cdf = alpha_list.condense(e_alpha_step)
     for [e_a, intensity] in alpha_ene_cdf:
         counter += 1
         if counter % (int(len(alpha_ene_cdf)/100)) == 0:
@@ -304,11 +304,13 @@ def main():
         if arg == '-l':
             alphalist_file = sys.argv[sys.argv.index(arg)+1]
             print('load alpha list', alphalist_file, file = sys.stdout)
-            alpha_list = alpha.AlphaList.from_filepath(alphalist_file).load_or_fetch()
+            alpha_list = alpha.AlphaList.from_filepath(alphalist_file)
+            alpha_list.load_or_fetch()
         if arg == '-c':
             chain_file = sys.argv[sys.argv.index(arg)+1]
             print('load alpha chain', chain_file, file = sys.stdout)
-            alpha_list = alpha.ChainAlphaList.from_filepath(chain_file).load_or_fetch()
+            alpha_list = alpha.ChainAlphaList.from_filepath(chain_file)
+            alpha_list.load_or_fetch()
         if arg == '-m':
             mat_file = sys.argv[sys.argv.index(arg)+1]
             print('load target material', mat_file, file = sys.stdout)
@@ -344,8 +346,8 @@ def main():
             constants.ofile = open(ofile,'w')
             #sys.stdout = open(ofile,'w')
 
-    if len(alpha_list) == 0 or mat_comp.empty():
-        if len(alpha_list)==0: print('No alpha list or chain specified', file = sys.stdout)
+    if len(alpha_list.alphas) == 0 or mat_comp.empty():
+        if len(alpha_list.alphas)==0: print('No alpha list or chain specified', file = sys.stdout)
         if mat_comp.empty(): print('No target material specified', file = sys.stdout)
         print('', file = sys.stdout)
         help_message()
@@ -353,9 +355,9 @@ def main():
 
     if constants.print_alphas:
         print('Alpha List: ', file = sys.stdout)
-        print(max(alpha_list), file = sys.stdout)
-        condense_alpha_list(alpha_list,alpha_step_size)
-        for alph in alpha_list:
+        print(max(alpha_list.alphas), file = sys.stdout)
+        condensed = alpha_list.condense(alpha_step_size)
+        for alph in condensed:
             print(alph[0],'&', alph[1],'\\\\', file = sys.stdout)
 
     if constants.download_data:
