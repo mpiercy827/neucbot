@@ -23,8 +23,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Run unit tests
         run: python -m pytest -vv
+
+      - name: Run integration tests
+        run: ./tests/integration_tests.sh
 
       - name: Run linter
         run: python -m black neucbot/ tests/ --check
