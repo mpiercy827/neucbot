@@ -41,7 +41,6 @@ echo "Materials/Acrylic.dat"
 echo "AlphaLists/Rn220Alphas.dat"
 echo
 
-
 python3 ./neucbot.py -m Materials/Acrylic.dat -l AlphaLists/Rn220Alphas.dat -d v2 -o tmp-acrylic-rn220-alphalist.txt
 diff tmp-acrylic-rn220-alphalist.txt tests/integration_tests/acrylic-rn220-alphalist.txt
 

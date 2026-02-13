@@ -32,37 +32,6 @@ class constants:
 def isoDir(ele,A):
     return './Data/Isotopes/'+ele.capitalize()+'/'+ele.capitalize()+str(int(A))+'/'
 
-def parseIsotope(iso):
-    ele = ''
-    A = 0
-    for i in iso:
-        if i.isalpha():
-            ele += i
-        if i.isdigit():
-            A = A*10 + int(i)
-    return [ele,A]
-
-def loadChainAlphaList(fname):
-    f = open(fname)
-    tokens = [line.split() for line in f.readlines()]
-    alpha_list = []
-    for line in tokens:
-        if len(list(line)) < 2 or line[0][0] == '#':
-            continue
-        # Read isotope and its branching ratio from file
-        iso = line[0]
-        br = float(line[1])
-        [ele,A] = parseIsotope(iso)
-
-        # Now get the isotope's alpha list and add it to the chain's list
-        aList_forIso = alpha.AlphaList(ele, A).load_or_fetch()
-        if constants.print_alphas:
-            print(iso, file = constants.ofile)
-            print('\t', aList_forIso, file = constants.ofile)
-        for [ene,intensity] in aList_forIso:
-            alpha_list.append([ene, intensity*br/100])
-    return alpha_list
-
 def runTALYS(e_a, ele, A):
     iso = str(ele)+str(int(A))
     inpdir = isoDir(ele,A) + 'TalysInputs/'
@@ -242,22 +211,6 @@ def readTotalNXsect(e_a,ele,A):
     #print("sigma = " , sigma)
     return sigma
 
-def condense_alpha_list(alpha_list,alpha_step_size):
-    alpha_ene_cdf = []
-    max_alpha = max(alpha_list)
-    e_a_max = int(max_alpha[0]*100 + 0.5)/100.
-    alpha_ene_cdf.append([e_a_max,max_alpha[1]])
-    e_a = e_a_max
-    while e_a > 0:
-        cum_int = 0
-        for alpha in alpha_list:
-            this_e_a = int(alpha[0]*100+0.5)/100.
-            if this_e_a >= e_a:
-                cum_int += alpha[1]
-        alpha_ene_cdf.append([e_a,cum_int])
-        e_a -= alpha_step_size
-    return alpha_ene_cdf
-
 def run_alpha(alpha_list, mat_comp, e_alpha_step):
     binsize = 0.1 # Bin size for output spectrum
 
@@ -265,7 +218,7 @@ def run_alpha(alpha_list, mat_comp, e_alpha_step):
     xsects = {}
     total_xsect = 0
     counter = 0
-    alpha_ene_cdf = condense_alpha_list(alpha_list,e_alpha_step)
+    alpha_ene_cdf = alpha_list.condense(e_alpha_step)
     for [e_a, intensity] in alpha_ene_cdf:
         counter += 1
         if counter % (int(len(alpha_ene_cdf)/100)) == 0:
@@ -335,10 +288,12 @@ def main():
             alphalist_file = sys.argv[sys.argv.index(arg)+1]
             print('load alpha list', alphalist_file, file = sys.stdout)
             alpha_list = alpha.AlphaList.from_filepath(alphalist_file)
+            alpha_list.load_or_fetch()
         if arg == '-c':
             chain_file = sys.argv[sys.argv.index(arg)+1]
             print('load alpha chain', chain_file, file = sys.stdout)
-            alpha_list = loadChainAlphaList(chain_file)
+            alpha_list = alpha.ChainAlphaList.from_filepath(chain_file)
+            alpha_list.load_or_fetch()
         if arg == '-m':
             mat_file = sys.argv[sys.argv.index(arg)+1]
             print('load target material', mat_file, file = sys.stdout)
@@ -374,8 +329,8 @@ def main():
             constants.ofile = open(ofile,'w')
             #sys.stdout = open(ofile,'w')
 
-    if len(alpha_list) == 0 or mat_comp.empty():
-        if len(alpha_list)==0: print('No alpha list or chain specified', file = sys.stdout)
+    if len(alpha_list.alphas) == 0 or mat_comp.empty():
+        if len(alpha_list.alphas)==0: print('No alpha list or chain specified', file = sys.stdout)
         if mat_comp.empty(): print('No target material specified', file = sys.stdout)
         print('', file = sys.stdout)
         help_message()
@@ -383,9 +338,9 @@ def main():
 
     if constants.print_alphas:
         print('Alpha List: ', file = sys.stdout)
-        print(max(alpha_list), file = sys.stdout)
-        condense_alpha_list(alpha_list,alpha_step_size)
-        for alph in alpha_list:
+        print(max(alpha_list.alphas), file = sys.stdout)
+        condensed = alpha_list.condense(alpha_step_size)
+        for alph in condensed:
             print(alph[0],'&', alph[1],'\\\\', file = sys.stdout)
 
     if constants.download_data:
