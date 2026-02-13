@@ -7,12 +7,12 @@ import re
 import subprocess
 import shutil
 import math
-import numpy
 
 from neucbot import alpha
 from neucbot import ensdf
 from neucbot import elements
 from neucbot import material
+from neucbot import utils
 
 class constants:
     MeV_to_keV= 1.e3
@@ -309,17 +309,17 @@ def run_alpha(alpha_list, mat_comp, e_alpha_step):
     newspec = spec_tot
     print('',file = constants.ofile)
 
-    rounded_total_xsect = numpy.format_float_scientific(total_xsect, precision=6, unique=False)
+    rounded_total_xsect = utils.format_float(total_xsect)
     print('# Total neutron yield = ', rounded_total_xsect, ' n/decay', file = constants.ofile)
 
     for x in sorted(xsects):
-        rounded_xsect = numpy.format_float_scientific(xsects[x], precision=6, unique=False)
+        rounded_xsect = utils.format_float(xsects[x])
         print('\t',x,rounded_xsect, file = constants.ofile)
 
-    rounded_integral = numpy.format_float_scientific(integrate(newspec), precision=6, unique=False)
+    rounded_integral = utils.format_float(integrate(newspec))
     print('# Integral of spectrum = ', rounded_integral, " n/decay", file = constants.ofile)
     for e in sorted(newspec):
-        rounded_newspec = numpy.format_float_scientific(newspec[e], precision=6, unique=False)
+        rounded_newspec = utils.format_float(newspec[e])
         print(e, rounded_newspec, file = constants.ofile)
 
 def help_message():
