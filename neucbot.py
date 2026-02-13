@@ -12,6 +12,7 @@ from neucbot import alpha
 from neucbot import ensdf
 from neucbot import elements
 from neucbot import material
+from neucbot import utils
 
 class constants:
     MeV_to_keV= 1.e3
@@ -302,16 +303,24 @@ def run_alpha(alpha_list, mat_comp, e_alpha_step):
     sys.stdout.write('\r')
     sys.stdout.write("[%-100s] %d%%" % ('='*int((counter*100)/len(alpha_ene_cdf)), 100*(counter+1)/len(alpha_ene_cdf)))
     sys.stdout.flush()
+
     print('', file = sys.stdout)
     # print out total spectrum
     newspec = spec_tot
     print('',file = constants.ofile)
-    print('# Total neutron yield = ', total_xsect, ' n/decay', file = constants.ofile)
+
+    rounded_total_xsect = utils.format_float(total_xsect)
+    print('# Total neutron yield = ', rounded_total_xsect, ' n/decay', file = constants.ofile)
+
     for x in sorted(xsects):
-        print('\t',x,xsects[x], file = constants.ofile)
-    print('# Integral of spectrum = ', integrate(newspec), " n/decay", file = constants.ofile)
+        rounded_xsect = utils.format_float(xsects[x])
+        print('\t',x,rounded_xsect, file = constants.ofile)
+
+    rounded_integral = utils.format_float(integrate(newspec))
+    print('# Integral of spectrum = ', rounded_integral, " n/decay", file = constants.ofile)
     for e in sorted(newspec):
-        print(e, newspec[e], file = constants.ofile)
+        rounded_newspec = utils.format_float(newspec[e])
+        print(e, rounded_newspec, file = constants.ofile)
 
 def help_message():
     print('Usage: You must specify an alpha list or decay chain file and a target material file.\nYou may also specify a step size to for integrating the alphas as they slow down in MeV; the default value is 0.01 MeV\n\t-l [alpha list file name]\n\t-c [decay chain file name]\n\t-m [material composition file name]\n\t-s [alpha step size in MeV]\n\t-t (to run TALYS for reactions not in libraries)\n\t-d (download isotopic data for isotopes missing from database; default behavior is v2)\n\t\t-d v1 (use V1 database, TALYS-1.6)\n\t-d v2 (use V2 database, TALYS-1.95)\n\t-o [output file name]', file = sys.stdout)
